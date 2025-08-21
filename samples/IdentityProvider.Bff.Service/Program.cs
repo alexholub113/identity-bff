@@ -111,6 +111,7 @@ RouteGroupBuilder versionedGroup = app
     .MapGroup("api/v{version:apiVersion}")
     .WithApiVersionSet(apiVersionSet);
 
+app.UseAuthEndpoints(versionedGroup);
 app.MapEndpoints(versionedGroup);
 
 if (app.Environment.IsDevelopment())

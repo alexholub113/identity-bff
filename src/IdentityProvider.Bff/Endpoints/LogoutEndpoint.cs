@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
-using MinimalEndpoints.Abstractions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Logging;
 
-namespace IdentityProvider.Bff.Service.Endpoints.Auth;
+namespace IdentityProvider.Bff.Endpoints;
 
-public class LogoutEndpoint : IEndpoint
+public class LogoutEndpoint : IAuthEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

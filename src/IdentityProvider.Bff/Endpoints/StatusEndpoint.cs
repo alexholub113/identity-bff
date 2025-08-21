@@ -1,8 +1,10 @@
-﻿using MinimalEndpoints.Abstractions;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 
-namespace IdentityProvider.Bff.Service.Endpoints.Auth;
+namespace IdentityProvider.Bff.Endpoints;
 
-public class StatusEndpoint : IEndpoint
+public class StatusEndpoint : IAuthEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

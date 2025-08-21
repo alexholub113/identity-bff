@@ -1,12 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Antiforgery;
-using MinimalEndpoints.Abstractions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
-using System.Text;
 
-namespace IdentityProvider.Bff.Service.Endpoints.Auth;
+namespace IdentityProvider.Bff.Endpoints;
 
-public class LoginEndpoint : IEndpoint
+public class LoginEndpoint : IAuthEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

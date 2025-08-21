@@ -1,12 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <Folder Include="Abstractions\" />
-  </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Cookies" />
