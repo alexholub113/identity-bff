@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
@@ -52,13 +53,15 @@ internal class OpenIdConnectAuthenticationHandler(IOptionsMonitor<OpenIdConnectA
         var authorizationCode = query["code"].ToString();
         var state = query["state"].ToString();
 
+        AuthenticationProperties? originalProperties = null;
+
         // Validate state parameter (basic CSRF protection)
         if (!string.IsNullOrEmpty(state) && Options.StateDataFormat != null)
         {
             try
             {
-                var protectedProperties = Options.StateDataFormat.Unprotect(state);
-                if (protectedProperties == null)
+                originalProperties = Options.StateDataFormat.Unprotect(state);
+                if (originalProperties == null)
                 {
                     Logger.LogWarning("Invalid state parameter");
                     return Task.FromResult(HandleRequestResult.Fail("Invalid state parameter"));
@@ -80,24 +83,27 @@ internal class OpenIdConnectAuthenticationHandler(IOptionsMonitor<OpenIdConnectA
         // In a real scenario, you'd get these claims from the ID token
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, "user123"), // This would come from the token
-            new Claim(ClaimTypes.Name, "Test User"),
-            new Claim(ClaimTypes.Email, "user@example.com"),
-            new Claim("sub", "user123")
+            new Claim(ClaimTypes.NameIdentifier, "alexholub"), // This would come from the token
+            new Claim(ClaimTypes.Name, "Alex Holub"),
+            new Claim(ClaimTypes.Email, "alexholub@example.com"),
+            new Claim("sub", "alexholub123")
         };
 
         var identity = new ClaimsIdentity(claims, Scheme.Name);
         var principal = new ClaimsPrincipal(identity);
 
+        // Preserve the original redirect URI from the authentication properties
         var authenticationProperties = new AuthenticationProperties
         {
             IssuedUtc = DateTimeOffset.UtcNow,
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1)
+            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
+            RedirectUri = originalProperties?.RedirectUri ?? "/" // Use the original return URL or default to home
         };
 
         var ticket = new AuthenticationTicket(principal, authenticationProperties, Scheme.Name);
 
-        Logger.LogInformation("Authentication successful for authorization code: {Code}", authorizationCode);
+        Logger.LogInformation("Authentication successful for authorization code: {Code}, redirecting to: {RedirectUri}",
+            authorizationCode, authenticationProperties.RedirectUri);
 
         return Task.FromResult(HandleRequestResult.Success(ticket));
     }
@@ -106,23 +112,21 @@ internal class OpenIdConnectAuthenticationHandler(IOptionsMonitor<OpenIdConnectA
     {
         // This is called when we need to redirect the user to the IdP for authentication
 
-        // Build the authorization URL
-        var authorizationUrl = BuildAuthorizationUrl(properties);
+        // Instead of redirecting to a URL, we need to submit a form to the authorization endpoint
+        var formHtml = BuildAuthorizationForm(properties);
 
-        Logger.LogInformation("Redirecting to authorization endpoint: {Url}", authorizationUrl);
+        Logger.LogInformation("Submitting form to authorization endpoint");
 
-        // Redirect to the IdP
-        Response.Redirect(authorizationUrl);
-
-        return Task.CompletedTask;
+        // Return an HTML form that auto-submits to the authorization endpoint
+        Response.ContentType = "text/html";
+        return Response.WriteAsync(formHtml);
     }
 
-    private string BuildAuthorizationUrl(AuthenticationProperties properties)
+    private string BuildAuthorizationForm(AuthenticationProperties properties)
     {
         var options = Options;
 
         // Build the callback URL (where the IdP will redirect back to)
-        // For development, ensure we use HTTP if that's what we want
         var callbackUrl = BuildRedirectUri(options.CallbackPath);
 
         // Generate state parameter for CSRF protection
@@ -131,33 +135,72 @@ internal class OpenIdConnectAuthenticationHandler(IOptionsMonitor<OpenIdConnectA
         // Determine the authorization endpoint
         var authorizationEndpoint = $"{options.Authority?.TrimEnd('/')}/{options.AuthorizationEndpoint?.TrimStart('/') ?? "connect/authorize"}";
 
-        // Build authorization URL with required parameters
-        var authorizationUrl = $"{authorizationEndpoint}" +
-            $"?client_id={Uri.EscapeDataString(options.ClientId ?? "")}" +
-            $"&response_type={Uri.EscapeDataString(options.ResponseType)}" +
-            $"&scope={Uri.EscapeDataString(options.Scope)}" +
-            $"&redirect_uri={Uri.EscapeDataString(callbackUrl)}" +
-            $"&state={Uri.EscapeDataString(state)}";
+        // Build HTML form with auto-submit
+        var formHtml = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Redirecting to Identity Provider</title>
+    <style>
+        body {{ 
+            font-family: Arial, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            background-color: #f5f5f5; 
+        }}
+        .container {{ 
+            text-align: center; 
+            padding: 20px; 
+            background: white; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }}
+        .spinner {{ 
+            border: 4px solid #f3f3f3; 
+            border-top: 4px solid #3498db; 
+            border-radius: 50%; 
+            width: 40px; 
+            height: 40px; 
+            animation: spin 2s linear infinite; 
+            margin: 20px auto; 
+        }}
+        @keyframes spin {{ 
+            0% {{ transform: rotate(0deg); }} 
+            100% {{ transform: rotate(360deg); }} 
+        }}
+    </style>
+</head>
+<body>
+    <div class=""container"">
+        <h2>Redirecting to Identity Provider</h2>
+        <div class=""spinner""></div>
+        <p>Please wait while we redirect you to the authentication provider...</p>
+        <noscript>
+            <p><strong>JavaScript is disabled.</strong> Please click the button below to continue:</p>
+            <input type=""submit"" value=""Continue to Identity Provider"" />
+        </noscript>
+    </div>
+    
+    <form id=""authForm"" method=""post"" action=""{authorizationEndpoint}"">
+        <input type=""hidden"" name=""client_id"" value=""{System.Net.WebUtility.HtmlEncode(options.ClientId ?? "")}"" />
+        <input type=""hidden"" name=""response_type"" value=""{System.Net.WebUtility.HtmlEncode(options.ResponseType)}"" />
+        <input type=""hidden"" name=""scope"" value=""{System.Net.WebUtility.HtmlEncode(options.Scope)}"" />
+        <input type=""hidden"" name=""redirect_uri"" value=""{System.Net.WebUtility.HtmlEncode(callbackUrl)}"" />
+        <input type=""hidden"" name=""state"" value=""{System.Net.WebUtility.HtmlEncode(state)}"" />
+    </form>
+    
+    <script>
+        // Auto-submit the form after a short delay
+        setTimeout(function() {{
+            document.getElementById('authForm').submit();
+        }}, 1000);
+    </script>
+</body>
+</html>";
 
-        return authorizationUrl;
-    }
-
-    private string BuildCallbackUrl(string callbackPath)
-    {
-        var request = Request;
-        var scheme = request.Scheme;
-        var host = request.Host;
-
-        var baseUrl = $"{scheme}://{host}";
-
-        // Ensure callback path starts with /
-        if (!callbackPath.StartsWith('/'))
-        {
-            callbackPath = "/" + callbackPath;
-        }
-
-        var callbackUrl = $"{baseUrl}{callbackPath}";
-
-        return callbackUrl;
+        return formHtml;
     }
 }

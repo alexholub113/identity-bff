@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36327.8
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.Bff.Service", "sample\IdentityProvider.Bff.Service\IdentityProvider.Bff.Service.csproj", "{7035DCCD-934B-454A-9936-7DE82E096921}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.Bff.Service", "samples\IdentityProvider.Bff.Service\IdentityProvider.Bff.Service.csproj", "{7035DCCD-934B-454A-9936-7DE82E096921}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample", "sample", "{2EFB3F58-5379-462A-82BF-B4665200D2C8}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{2EFB3F58-5379-462A-82BF-B4665200D2C8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityProvider.Bff", "src\IdentityProvider.Bff\IdentityProvider.Bff.csproj", "{8FD34D7F-314F-4277-B5FB-04CCC7CB2A3F}"
 EndProject

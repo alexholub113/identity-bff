@@ -46,8 +46,11 @@ public class AuthenticationConfiguration
 
     /// <summary>
     /// Gets or sets the redirect path for sign-in callback.
+    /// This is where the external identity provider will redirect back to after authentication.
+    /// Should match the redirect URI configured in your identity provider.
+    /// Default: "/auth/callback" (more explicit than the standard "/signin-oidc")
     /// </summary>
-    public string CallbackPath { get; set; } = "/signin-oidc";
+    public string CallbackPath { get; set; } = "/auth/callback";
 
     /// <summary>
     /// Gets or sets whether to require HTTPS metadata.

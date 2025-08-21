@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.DataProtection;
 
 namespace IdentityProvider.Bff;
 
