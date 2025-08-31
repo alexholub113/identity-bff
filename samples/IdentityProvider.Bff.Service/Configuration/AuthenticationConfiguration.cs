@@ -60,7 +60,7 @@ public class AuthenticationConfiguration
     /// <summary>
     /// Gets or sets whether to use the custom authentication handler.
     /// </summary>
-    public bool UseCustomHandler { get; set; } = true;
+    public bool UseCustomHandler { get; set; } = false;
 
     /// <summary>
     /// Gets or sets the authentication scheme name.

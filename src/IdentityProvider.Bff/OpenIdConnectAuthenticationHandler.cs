@@ -5,12 +5,16 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace IdentityProvider.Bff;
 
-internal class OpenIdConnectAuthenticationHandler(IOptionsMonitor<OpenIdConnectAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder, IDataProtectionProvider dataProtection) : RemoteAuthenticationHandler<OpenIdConnectAuthenticationOptions>(options, logger, encoder)
+internal class OpenIdConnectAuthenticationHandler(IOptionsMonitor<OpenIdConnectAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder, IDataProtectionProvider dataProtection, IHttpClientFactory httpClientFactory) : RemoteAuthenticationHandler<OpenIdConnectAuthenticationOptions>(options, logger, encoder)
 {
     private readonly IDataProtectionProvider _dataProtection = dataProtection;
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
 
     protected override Task InitializeHandlerAsync()
     {
@@ -28,7 +32,7 @@ internal class OpenIdConnectAuthenticationHandler(IOptionsMonitor<OpenIdConnectA
         return base.InitializeHandlerAsync();
     }
 
-    protected override Task<HandleRequestResult> HandleRemoteAuthenticateAsync()
+    protected override async Task<HandleRequestResult> HandleRemoteAuthenticateAsync()
     {
         // This is called when the IdP redirects back to our callback URL
         var query = Request.Query;
@@ -40,14 +44,14 @@ internal class OpenIdConnectAuthenticationHandler(IOptionsMonitor<OpenIdConnectA
             var errorDescription = query["error_description"].ToString();
             Logger.LogWarning("Authentication error: {Error} - {Description}", error, errorDescription);
 
-            return Task.FromResult(HandleRequestResult.Fail($"Authentication failed: {error}"));
+            return HandleRequestResult.Fail($"Authentication failed: {error}");
         }
 
         // Check for authorization code
         if (!query.ContainsKey("code"))
         {
             Logger.LogWarning("No authorization code received");
-            return Task.FromResult(HandleRequestResult.Fail("No authorization code received"));
+            return HandleRequestResult.Fail("No authorization code received");
         }
 
         var authorizationCode = query["code"].ToString();
@@ -64,48 +68,66 @@ internal class OpenIdConnectAuthenticationHandler(IOptionsMonitor<OpenIdConnectA
                 if (originalProperties == null)
                 {
                     Logger.LogWarning("Invalid state parameter");
-                    return Task.FromResult(HandleRequestResult.Fail("Invalid state parameter"));
+                    return HandleRequestResult.Fail("Invalid state parameter");
                 }
             }
             catch (Exception ex)
             {
                 Logger.LogWarning(ex, "Failed to unprotect state parameter");
-                return Task.FromResult(HandleRequestResult.Fail("Invalid state parameter"));
+                return HandleRequestResult.Fail("Invalid state parameter");
             }
         }
 
-        // TODO: In a real implementation, you would:
-        // 1. Exchange the authorization code for tokens by calling the token endpoint
-        // 2. Validate the tokens (signature, expiration, issuer, audience)
-        // 3. Extract claims from the ID token
-
-        // For now, let's create a minimal successful authentication result
-        // In a real scenario, you'd get these claims from the ID token
-        var claims = new List<Claim>
+        // Exchange authorization code for tokens
+        try
         {
-            new Claim(ClaimTypes.NameIdentifier, "alexholub"), // This would come from the token
-            new Claim(ClaimTypes.Name, "Alex Holub"),
-            new Claim(ClaimTypes.Email, "alexholub@example.com"),
-            new Claim("sub", "alexholub123")
-        };
+            var tokenResponse = await ExchangeCodeForTokensAsync(authorizationCode, originalProperties);
+            if (tokenResponse == null)
+            {
+                Logger.LogWarning("Failed to exchange authorization code for tokens");
+                return HandleRequestResult.Fail("Failed to exchange authorization code for tokens");
+            }
 
-        var identity = new ClaimsIdentity(claims, Scheme.Name);
-        var principal = new ClaimsPrincipal(identity);
+            // Extract claims from the ID token
+            var claims = ExtractClaimsFromIdToken(tokenResponse.IdToken);
+            if (claims == null || !claims.Any())
+            {
+                Logger.LogWarning("Failed to extract claims from ID token");
+                return HandleRequestResult.Fail("Failed to extract claims from ID token");
+            }
 
-        // Preserve the original redirect URI from the authentication properties
-        var authenticationProperties = new AuthenticationProperties
+            var identity = new ClaimsIdentity(claims, Scheme.Name);
+            var principal = new ClaimsPrincipal(identity);
+
+            // Store tokens in authentication properties for later use
+            var authenticationProperties = new AuthenticationProperties
+            {
+                IssuedUtc = DateTimeOffset.UtcNow,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddSeconds(tokenResponse.ExpiresIn),
+                RedirectUri = originalProperties?.RedirectUri ?? "/"
+            };
+
+            // Store tokens securely in authentication properties
+            authenticationProperties.StoreTokens(new[]
+            {
+                new AuthenticationToken { Name = "access_token", Value = tokenResponse.AccessToken },
+                new AuthenticationToken { Name = "id_token", Value = tokenResponse.IdToken },
+                new AuthenticationToken { Name = "token_type", Value = tokenResponse.TokenType },
+                new AuthenticationToken { Name = "expires_at", Value = DateTimeOffset.UtcNow.AddSeconds(tokenResponse.ExpiresIn).ToString("o") }
+            });
+
+            var ticket = new AuthenticationTicket(principal, authenticationProperties, Scheme.Name);
+
+            Logger.LogInformation("Authentication successful for authorization code: {Code}, user: {UserId}",
+                authorizationCode, claims.FirstOrDefault(c => c.Type == "sub")?.Value);
+
+            return HandleRequestResult.Success(ticket);
+        }
+        catch (Exception ex)
         {
-            IssuedUtc = DateTimeOffset.UtcNow,
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1),
-            RedirectUri = originalProperties?.RedirectUri ?? "/" // Use the original return URL or default to home
-        };
-
-        var ticket = new AuthenticationTicket(principal, authenticationProperties, Scheme.Name);
-
-        Logger.LogInformation("Authentication successful for authorization code: {Code}, redirecting to: {RedirectUri}",
-            authorizationCode, authenticationProperties.RedirectUri);
-
-        return Task.FromResult(HandleRequestResult.Success(ticket));
+            Logger.LogError(ex, "Error during token exchange");
+            return HandleRequestResult.Fail("Authentication failed");
+        }
     }
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
@@ -202,5 +224,113 @@ internal class OpenIdConnectAuthenticationHandler(IOptionsMonitor<OpenIdConnectA
 </html>";
 
         return formHtml;
+    }
+
+    private async Task<TokenResponse?> ExchangeCodeForTokensAsync(string authorizationCode, AuthenticationProperties? originalProperties)
+    {
+        try
+        {
+            var options = Options;
+            var tokenEndpoint = $"{options.Authority?.TrimEnd('/')}/{options.TokenEndpoint?.TrimStart('/') ?? "connect/token"}";
+            var callbackUrl = BuildRedirectUri(options.CallbackPath);
+
+            var httpClient = _httpClientFactory.CreateClient();
+
+            var tokenRequest = new Dictionary<string, string>
+            {
+                ["grant_type"] = "authorization_code",
+                ["code"] = authorizationCode,
+                ["redirect_uri"] = callbackUrl,
+                ["client_id"] = options.ClientId ?? ""
+            };
+
+            // Add client secret if configured
+            if (!string.IsNullOrEmpty(options.ClientSecret))
+            {
+                tokenRequest["client_secret"] = options.ClientSecret;
+            }
+
+            var content = new FormUrlEncodedContent(tokenRequest);
+
+            Logger.LogDebug("Exchanging authorization code for tokens at: {TokenEndpoint}", tokenEndpoint);
+
+            var response = await httpClient.PostAsync(tokenEndpoint, content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Logger.LogWarning("Token exchange failed with status {StatusCode}: {Error}",
+                    response.StatusCode, errorContent);
+                return null;
+            }
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(responseContent, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            Logger.LogDebug("Token exchange successful");
+            return tokenResponse;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Exception during token exchange");
+            return null;
+        }
+    }
+
+    private List<Claim>? ExtractClaimsFromIdToken(string idToken)
+    {
+        try
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+
+            // For demo purposes, we'll read the token without validation
+            // In production, you should validate the signature, issuer, audience, etc.
+            var jwt = tokenHandler.ReadJwtToken(idToken);
+
+            var claims = new List<Claim>();
+
+            // Extract standard OIDC claims
+            foreach (var claim in jwt.Claims)
+            {
+                // Map some claims to standard ClaimTypes
+                var claimType = claim.Type switch
+                {
+                    "sub" => ClaimTypes.NameIdentifier,
+                    "email" => ClaimTypes.Email,
+                    "name" => ClaimTypes.Name,
+                    "given_name" => ClaimTypes.GivenName,
+                    "family_name" => ClaimTypes.Surname,
+                    _ => claim.Type
+                };
+
+                claims.Add(new Claim(claimType, claim.Value));
+
+                // Also keep the original claim type for OIDC compatibility
+                if (claimType != claim.Type)
+                {
+                    claims.Add(new Claim(claim.Type, claim.Value));
+                }
+            }
+
+            Logger.LogDebug("Extracted {ClaimCount} claims from ID token", claims.Count);
+            return claims;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to extract claims from ID token");
+            return null;
+        }
+    }
+
+    private class TokenResponse
+    {
+        public string AccessToken { get; set; } = "";
+        public string TokenType { get; set; } = "";
+        public int ExpiresIn { get; set; }
+        public string IdToken { get; set; } = "";
+        public string? Scope { get; set; }
     }
 }

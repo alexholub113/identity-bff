@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace IdentityProvider.Bff;
 
@@ -18,6 +17,9 @@ public static class ServiceCollectionExtensions
         Action<OpenIdConnectAuthenticationOptions> configureOptions,
         bool useCustomHandler = false)
     {
+        // Add HTTP client factory for token exchange
+        services.AddHttpClient();
+
         var authenticationBuilder = services.AddAuthentication(options =>
         {
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -35,13 +37,44 @@ public static class ServiceCollectionExtensions
         {
             var openIdConnectAuthenticationOptions = new OpenIdConnectAuthenticationOptions();
             configureOptions?.Invoke(openIdConnectAuthenticationOptions);
-            authenticationBuilder.AddOpenIdConnect(options =>
+            authenticationBuilder.AddOpenIdConnect(authenticationScheme, displayName, options =>
             {
+                // Basic OIDC configuration
                 options.Authority = openIdConnectAuthenticationOptions.Authority;
                 options.ClientId = openIdConnectAuthenticationOptions.ClientId;
                 options.ClientSecret = openIdConnectAuthenticationOptions.ClientSecret;
                 options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-                options.ResponseType = OpenIdConnectResponseType.Code;
+                options.ResponseType = openIdConnectAuthenticationOptions.ResponseType;
+
+                // Scopes
+                options.Scope.Clear();
+                if (!string.IsNullOrEmpty(openIdConnectAuthenticationOptions.Scope))
+                {
+                    foreach (var scope in openIdConnectAuthenticationOptions.Scope.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        options.Scope.Add(scope);
+                    }
+                }
+                else
+                {
+                    options.Scope.Add("openid");
+                    options.Scope.Add("profile");
+                }
+
+                // Security settings
+                options.RequireHttpsMetadata = openIdConnectAuthenticationOptions.RequireHttpsMetadata;
+
+                // Callback paths
+                if (!string.IsNullOrEmpty(openIdConnectAuthenticationOptions.CallbackPath))
+                    options.CallbackPath = openIdConnectAuthenticationOptions.CallbackPath;
+                else
+                    options.CallbackPath = "/signin-oidc";
+
+                options.SignedOutCallbackPath = "/signout-callback-oidc";
+
+                // Token validation
+                options.GetClaimsFromUserInfoEndpoint = true;
+                options.SaveTokens = true;
             });
         }
 

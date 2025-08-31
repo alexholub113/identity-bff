@@ -25,6 +25,11 @@ public class OpenIdConnectAuthenticationOptions : RemoteAuthenticationOptions
     public string? UserInfoEndpoint { get; set; } = "/connect/userinfo";
 
     /// <summary>
+    /// Gets or sets the JWKS URI. If not specified, will use Authority + "/.well-known/jwks".
+    /// </summary>
+    public string? JwksUri { get; set; } = "/.well-known/jwks";
+
+    /// <summary>
     /// Gets or sets the 'client_id'.
     /// </summary>
     public string? ClientId { get; set; }

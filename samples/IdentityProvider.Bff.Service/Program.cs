@@ -1,5 +1,3 @@
-using Asp.Versioning;
-using Asp.Versioning.Builder;
 using IdentityProvider.Bff;
 using IdentityProvider.Bff.Service.Configuration;
 using MinimalEndpoints.Extensions;
@@ -7,30 +5,8 @@ using MinimalEndpoints.Extensions;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddApiVersioning(options =>
-{
-    options.DefaultApiVersion = new ApiVersion(1);
-    options.AssumeDefaultVersionWhenUnspecified = true;
-    options.ApiVersionReader = ApiVersionReader.Combine(
-        new UrlSegmentApiVersionReader(),
-        new QueryStringApiVersionReader(),
-        new HeaderApiVersionReader("X-Version"),
-        new MediaTypeApiVersionReader("ver")
-    );
-}).AddApiExplorer(options =>
-{
-    options.GroupNameFormat = "'v'VVV";
-    options.SubstituteApiVersionInUrl = true;
-});
 
-builder.Services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
-    {
-        Title = "Identity Provider BFF API Sample",
-        Version = "v1",
-    });
-});
+builder.Services.AddSwaggerGen();
 
 builder.Services.AddEndpoints(typeof(Program).Assembly);
 
@@ -89,30 +65,13 @@ builder.Services.AddRemoteAuthentication(
         options.Scope = authConfig.Scope;
         options.CallbackPath = authConfig.CallbackPath;
         options.RequireHttpsMetadata = authConfig.RequireHttpsMetadata;
-
-        // Set custom endpoints if specified
-        if (!string.IsNullOrEmpty(authConfig.AuthorizationEndpoint))
-            options.AuthorizationEndpoint = authConfig.AuthorizationEndpoint;
-        if (!string.IsNullOrEmpty(authConfig.TokenEndpoint))
-            options.TokenEndpoint = authConfig.TokenEndpoint;
-        if (!string.IsNullOrEmpty(authConfig.UserInfoEndpoint))
-            options.UserInfoEndpoint = authConfig.UserInfoEndpoint;
     },
     useCustomHandler: authConfig.UseCustomHandler);
 
 WebApplication app = builder.Build();
 
-ApiVersionSet apiVersionSet = app.NewApiVersionSet()
-    .HasApiVersion(new ApiVersion(1))
-    .ReportApiVersions()
-    .Build();
-
-RouteGroupBuilder versionedGroup = app
-    .MapGroup("api/v{version:apiVersion}")
-    .WithApiVersionSet(apiVersionSet);
-
-app.UseAuthEndpoints(versionedGroup);
-app.MapEndpoints(versionedGroup);
+app.UseAuthEndpoints();
+app.MapEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
