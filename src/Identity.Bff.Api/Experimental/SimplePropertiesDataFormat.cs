@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using System.Text.Json;
 
-namespace IdentityProvider.Bff;
+namespace Identity.Bff.Api.Experimental;
 
 /// <summary>
 /// Simple data format for protecting authentication properties

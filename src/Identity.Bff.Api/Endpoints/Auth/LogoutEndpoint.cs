@@ -1,12 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using MinimalEndpoints.Abstractions;
 
-namespace IdentityProvider.Bff.Endpoints;
+namespace Identity.Bff.Api.Endpoints.Auth;
 
-public class LogoutEndpoint : IAuthEndpoint
+public class LogoutEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -33,7 +31,7 @@ public class LogoutEndpoint : IAuthEndpoint
                     RedirectUri = validatedReturnUrl
                 };
 
-                await context.SignOutAsync("oidc", properties);
+                await context.SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, properties);
 
                 logger?.LogInformation("User logout completed, redirecting to: {ReturnUrl}", validatedReturnUrl);
 

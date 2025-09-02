@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
-namespace IdentityProvider.Bff;
+namespace Identity.Bff.Api.Experimental;
 
 internal class OpenIdConnectAuthenticationHandler(IOptionsMonitor<OpenIdConnectAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder, IDataProtectionProvider dataProtection) : RemoteAuthenticationHandler<OpenIdConnectAuthenticationOptions>(options, logger, encoder)
 {

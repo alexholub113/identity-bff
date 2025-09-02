@@ -1,4 +1,4 @@
-namespace IdentityProvider.Bff.Service.Configuration;
+namespace Identity.Bff.Api.Configuration;
 
 public class AuthenticationConfiguration
 {
@@ -8,21 +8,6 @@ public class AuthenticationConfiguration
     /// Gets or sets the Authority to use when making OpenIdConnect calls.
     /// </summary>
     public string Authority { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the authorization endpoint URL. If not specified, will use Authority + "/connect/authorize".
-    /// </summary>
-    public string? AuthorizationEndpoint { get; set; }
-
-    /// <summary>
-    /// Gets or sets the token endpoint URL. If not specified, will use Authority + "/connect/token".
-    /// </summary>
-    public string? TokenEndpoint { get; set; }
-
-    /// <summary>
-    /// Gets or sets the userinfo endpoint URL. If not specified, will use Authority + "/connect/userinfo".
-    /// </summary>
-    public string? UserInfoEndpoint { get; set; }
 
     /// <summary>
     /// Gets or sets the 'client_id'.
@@ -58,17 +43,7 @@ public class AuthenticationConfiguration
     public bool RequireHttpsMetadata { get; set; } = true;
 
     /// <summary>
-    /// Gets or sets whether to use the custom authentication handler.
+    /// Gets or sets whether to use the experimental authentication logic.
     /// </summary>
-    public bool UseCustomHandler { get; set; } = false;
-
-    /// <summary>
-    /// Gets or sets the authentication scheme name.
-    /// </summary>
-    public string Scheme { get; set; } = "oidc";
-
-    /// <summary>
-    /// Gets or sets the display name for the authentication scheme.
-    /// </summary>
-    public string DisplayName { get; set; } = "OpenID Connect";
+    public bool UseExperimentalLogic { get; set; } = false;
 }

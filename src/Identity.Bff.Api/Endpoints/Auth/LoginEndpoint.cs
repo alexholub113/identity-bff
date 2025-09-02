@@ -1,13 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using MinimalEndpoints.Abstractions;
 using System.Security.Cryptography;
 
-namespace IdentityProvider.Bff.Endpoints;
+namespace Identity.Bff.Api.Endpoints.Auth;
 
-public class LoginEndpoint : IAuthEndpoint
+public class LoginEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -32,7 +30,7 @@ public class LoginEndpoint : IAuthEndpoint
                 context.Session.SetString("oauth_state", state);
 
                 // Trigger authentication challenge
-                await context.ChallengeAsync("oidc", properties);
+                await context.ChallengeAsync(OpenIdConnectDefaults.AuthenticationScheme, properties);
                 return Results.Empty;
             }
             catch (Exception ex)

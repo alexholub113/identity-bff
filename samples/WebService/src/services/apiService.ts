@@ -8,25 +8,38 @@ export class ApiService {
         url: string,
         options: RequestInit = {}
     ): Promise<T> {
-        const response = await fetch(`${this.getBaseUrl()}${url}`, {
-            ...options,
-            credentials: 'include', // Important for cookie-based authentication
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
-        });
+        try {
+            const response = await fetch(`${this.getBaseUrl()}${url}`, {
+                ...options,
+                credentials: 'include', // Important for cookie-based authentication
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers,
+                },
+            });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+            // Check if response is a redirect (302, 301, etc.)
+            if (response.status >= 300 && response.status < 400) {
+                throw new Error(`HTTP error! status: ${response.status} - Authentication required`);
+            }
 
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-            return response.json();
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            }
+            
+            return response.text() as unknown as T;
+        } catch (error) {
+            // If it's a network error or CORS issue, it might be due to authentication redirect
+            if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+                throw new Error('HTTP error! status: 302 - Authentication required');
+            }
+            throw error;
         }
-        
-        return response.text() as unknown as T;
     }
 
     static async get<T>(url: string): Promise<T> {

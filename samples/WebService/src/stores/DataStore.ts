@@ -39,22 +39,15 @@ export class DataStore {
     }
 
     async fetchProtectedData(userId: string, userRoles: string[] = []): Promise<void> {
-        this.setLoading(true);
-        this.setError('');
+        // First fetch the weather data
+        await this.fetchWeatherForecast();
         
-        try {
-            // Fetch weather forecast data from the protected endpoint
-            const weatherData = await ApiService.get<WeatherForecast[]>('/WeatherForecast');
-            
-            runInAction(() => {
-                this.setWeatherForecast(weatherData);
-            });
-
-            // Create mock protected data that includes the weather info
+        // If we got here, the weather fetch was successful, so create mock protected data
+        if (this.weatherForecast.length > 0 && !this.error) {
             const mockData: ProtectedDataItem = {
                 userId: userId,
                 timestamp: new Date().toISOString(),
-                secureData: `Weather forecast data retrieved successfully. ${weatherData.length} entries found.`,
+                secureData: `Weather forecast data retrieved successfully. ${this.weatherForecast.length} entries found.`,
                 userPermissions: userRoles,
                 sessionInfo: {
                     loginTime: new Date(Date.now() - Math.random() * 3600000).toISOString(),
@@ -64,19 +57,6 @@ export class DataStore {
             
             runInAction(() => {
                 this.setProtectedData(mockData);
-            });
-        } catch (err: any) {
-            runInAction(() => {
-                if (err.message.includes('401') || err.message.includes('status: 401')) {
-                    this.setError('Authentication required. Please log in to access protected data.');
-                } else {
-                    this.setError('Failed to fetch protected data. Please try again.');
-                }
-            });
-            console.error('Protected data fetch error:', err);
-        } finally {
-            runInAction(() => {
-                this.setLoading(false);
             });
         }
     }
@@ -93,8 +73,11 @@ export class DataStore {
             });
         } catch (err: any) {
             runInAction(() => {
-                if (err.message.includes('401') || err.message.includes('status: 401')) {
-                    this.setError('Authentication required. Please log in to access weather data.');
+                if (err.message.includes('401') || err.message.includes('status: 401') || 
+                    err.message.includes('302') || err.message.includes('status: 302')) {
+                    // Instead of showing error, automatically trigger authentication
+                    this.setError('Redirecting to login...');
+                    this.triggerAuthenticationChallenge();
                 } else {
                     this.setError('Failed to fetch weather data. Please try again.');
                 }
@@ -105,6 +88,17 @@ export class DataStore {
                 this.setLoading(false);
             });
         }
+    }
+
+    private triggerAuthenticationChallenge(): void {
+        // Redirect to the auth login endpoint which will handle the OAuth2 challenge
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://localhost:7108';
+        const currentUrl = window.location.href;
+        const loginUrl = new URL(`/auth/login`, baseUrl);
+        loginUrl.searchParams.set('returnUrl', currentUrl);
+        
+        // Trigger the authentication challenge by redirecting to login
+        window.location.href = loginUrl.toString();
     }
 
     clearData() {

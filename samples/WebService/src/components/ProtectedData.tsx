@@ -1,6 +1,9 @@
 import { observer } from 'mobx-react-lite';
 import { useEffect } from 'react';
 import { useAuthStore, useDataStore } from '../stores';
+import AuthFlowDemo from './AuthFlowDemo';
+import ErrorDisplay from './ErrorDisplay';
+import WeatherTable from './WeatherTable';
 
 const ProtectedData = observer(() => {
     const dataStore = useDataStore();
@@ -22,9 +25,28 @@ const ProtectedData = observer(() => {
 
     if (!authStore.isAuthenticated) {
         return (
-            <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Protected Data</h3>
-                <p className="text-gray-600">Please log in to view protected data and weather information.</p>
+            <div className="bg-gray-800 rounded-xl shadow-xl p-6 border border-gray-700">
+                <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+                    <span className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-xs mr-2">🔒</span>
+                    Protected Resources Demo
+                </h3>
+                
+                <div className="text-center py-6 mb-6">
+                    <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl">🔐</span>
+                    </div>
+                    <p className="text-gray-300 mb-2 text-lg font-medium">Experience the Authentication Flow</p>
+                    <p className="text-gray-400 mb-6">Try accessing protected endpoints to see how OAuth2 authentication works</p>
+                </div>
+
+                <AuthFlowDemo />
+
+                {/* Error Display */}
+                {dataStore.error && (
+                    <div className="mt-4">
+                        <ErrorDisplay error={dataStore.error} />
+                    </div>
+                )}
             </div>
         );
     }
@@ -32,55 +54,60 @@ const ProtectedData = observer(() => {
     return (
         <div className="space-y-6">
             {/* Protected Data Section */}
-            <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Protected Data</h3>
+            <div className="bg-gray-800 rounded-xl shadow-xl p-6 border border-gray-700">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-semibold text-white flex items-center">
+                        <span className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs mr-2">🔒</span>
+                        Protected User Data
+                    </h3>
                     {dataStore.isLoading && (
-                        <div className="text-sm text-blue-600">Loading...</div>
+                        <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-sm text-blue-400">Loading...</span>
+                        </div>
                     )}
                 </div>
 
                 {dataStore.error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-                        {dataStore.error}
+                    <div className="mb-4">
+                        <ErrorDisplay error={dataStore.error} />
                     </div>
                 )}
 
                 {dataStore.protectedData && (
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">User ID</label>
-                            <p className="text-sm text-gray-900">{dataStore.protectedData.userId}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">User ID</label>
+                            <p className="text-white font-mono text-sm">{dataStore.protectedData.userId}</p>
                         </div>
                         
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Secure Data</label>
-                            <p className="text-sm text-gray-900">{dataStore.protectedData.secureData}</p>
+                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Secure Data</label>
+                            <p className="text-white font-mono text-sm">{dataStore.protectedData.secureData}</p>
                         </div>
                         
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">User Permissions</label>
-                            <p className="text-sm text-gray-900">{dataStore.protectedData.userPermissions.join(', ')}</p>
+                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Permissions</label>
+                            <p className="text-white font-mono text-sm">{dataStore.protectedData.userPermissions.join(', ')}</p>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Login Time</label>
-                                <p className="text-sm text-gray-900">
-                                    {new Date(dataStore.protectedData.sessionInfo.loginTime).toLocaleString()}
-                                </p>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Session Expires</label>
-                                <p className="text-sm text-gray-900">
-                                    {new Date(dataStore.protectedData.sessionInfo.expiresAt).toLocaleString()}
-                                </p>
-                            </div>
+                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Login Time</label>
+                            <p className="text-white font-mono text-sm">
+                                {new Date(dataStore.protectedData.sessionInfo.loginTime).toLocaleString()}
+                            </p>
                         </div>
                         
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Last Updated</label>
-                            <p className="text-sm text-gray-900">
+                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Session Expires</label>
+                            <p className="text-white font-mono text-sm">
+                                {new Date(dataStore.protectedData.sessionInfo.expiresAt).toLocaleString()}
+                            </p>
+                        </div>
+                        
+                        <div className="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Last Updated</label>
+                            <p className="text-white font-mono text-sm">
                                 {new Date(dataStore.protectedData.timestamp).toLocaleString()}
                             </p>
                         </div>
@@ -89,60 +116,31 @@ const ProtectedData = observer(() => {
             </div>
 
             {/* Weather Forecast Section */}
-            <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Weather Forecast (Protected API)</h3>
+            <div className="bg-gray-800 rounded-xl shadow-xl p-6 border border-gray-700">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-semibold text-white flex items-center">
+                        <span className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-xs mr-2">🌤️</span>
+                        Weather Forecast API
+                    </h3>
                     <button
                         onClick={handleRefreshWeather}
                         disabled={dataStore.isLoading}
-                        className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                     >
-                        {dataStore.isLoading ? 'Loading...' : 'Refresh'}
+                        {dataStore.isLoading ? (
+                            <span className="flex items-center">
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                Loading...
+                            </span>
+                        ) : (
+                            <span className="flex items-center">
+                                🔄 Refresh Data
+                            </span>
+                        )}
                     </button>
                 </div>
 
-                {dataStore.weatherForecast.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Date
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Temperature (°C)
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Temperature (°F)
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Summary
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {dataStore.weatherForecast.map((forecast, index) => (
-                                    <tr key={index} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {new Date(forecast.date).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {forecast.temperatureC}°C
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {forecast.temperatureF}°F
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {forecast.summary || 'N/A'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <p className="text-gray-600">No weather data available.</p>
-                )}
+                <WeatherTable />
             </div>
         </div>
     );

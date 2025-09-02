@@ -1,11 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
+using MinimalEndpoints.Abstractions;
 
-namespace IdentityProvider.Bff.Endpoints;
+namespace Identity.Bff.Api.Endpoints.Auth;
 
-public class ProfileEndpoint : IAuthEndpoint
+public class ProfileEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {

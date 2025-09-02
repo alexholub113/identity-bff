@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 
-namespace IdentityProvider.Bff;
+namespace Identity.Bff.Api.Experimental;
 
 public class OpenIdConnectAuthenticationOptions : RemoteAuthenticationOptions
 {

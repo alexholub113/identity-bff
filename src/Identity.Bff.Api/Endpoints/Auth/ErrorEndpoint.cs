@@ -1,11 +1,8 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Logging;
+using MinimalEndpoints.Abstractions;
 
-namespace IdentityProvider.Bff.Endpoints;
+namespace Identity.Bff.Api.Endpoints.Auth;
 
-public class ErrorEndpoint : IAuthEndpoint
+public class ErrorEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
