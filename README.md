@@ -197,7 +197,7 @@ VITE_API_BASE_URL=https://localhost:7108
 
 ## 🔗 Integration with Identity Provider
 
-This BFF is designed to work with the [Custom Identity Provider](../identity-idp/):
+This BFF is designed to work with the [Custom Identity Provider](https://github.com/alexholub113/identity-idp):
 
 1. **Start the Identity Provider** first
 2. **Configure the BFF** to point to the IdP
