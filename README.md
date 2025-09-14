@@ -2,7 +2,7 @@
 
 A comprehensive Backend for Frontend (BFF) implementation demonstrating OIDC/OAuth2 authentication patterns with a React frontend. This project showcases best practices for secure authentication flows between a client application, BFF, and Identity Provider.
 
-![Website Main Page](Website-main-page.png)
+![Demo](IdP-Demonstration.gif)
 
 ## 🎯 Project Overview
 
